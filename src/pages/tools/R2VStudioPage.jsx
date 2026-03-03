@@ -376,9 +376,9 @@ export default function R2VStudioPage() {
                                                     ? 'bg-violet-500/20 border border-violet-500/50 text-cream-900'
                                                     : 'bg-cream-100 border border-cream-300 text-cream-400 hover:text-cream-600'
                                                     }`}
-                                                title="Video satu shot kontinu tanpa ganti angle"
+                                                title="Video satu shot tanpa ganti angle"
                                             >
-                                                🎥 Kontinu
+                                                Single-Shot
                                             </button>
                                             <button
                                                 onClick={() => setShotType('multi')}
@@ -388,7 +388,7 @@ export default function R2VStudioPage() {
                                                     }`}
                                                 title="Video dengan pergantian angle/shot, cocok untuk dialog"
                                             >
-                                                🎬 Multi-Shot
+                                                Multi-Shot
                                             </button>
                                         </div>
                                     </div>
@@ -402,8 +402,7 @@ export default function R2VStudioPage() {
                                                 : 'bg-cream-100 border border-cream-300 text-cream-400'
                                                 }`}
                                         >
-                                            <Volume2 className="w-3.5 h-3.5" />
-                                            {audioEnabled ? '🔊 Aktif' : '🔇 Mati'}
+                                            {audioEnabled ? 'Aktif' : 'Mati'}
                                         </button>
                                     </div>
                                 </div>

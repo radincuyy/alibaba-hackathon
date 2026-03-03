@@ -44,7 +44,7 @@ export default function LandingPage() {
                                 Bergabung dengan jutaan UMKM Indonesia yang sudah menggunakan AI untuk marketing mereka.
                             </p>
                             <Link to="/generator" className="btn-accent text-base !px-10 !py-4 group">
-                                Mulai Buat Konten — Gratis
+                                Mulai Buat Konten
                                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </Link>
                         </div>

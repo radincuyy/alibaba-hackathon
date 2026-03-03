@@ -88,7 +88,6 @@ export default function GeneratorPage() {
                     {/* Header */}
                     <div className="mb-14 max-w-2xl">
                         <div className="flex items-center gap-2 mb-4">
-                            <Sparkles className="w-4 h-4 text-accent" />
                             <span className="section-label text-accent">Powered by Qwen AI & Wan 2.6</span>
                         </div>
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-cream-900 mb-4 leading-tight">
