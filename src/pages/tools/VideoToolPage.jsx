@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Video, Loader2, Download, Upload, UserCircle, Camera, X, Sparkles, Clock, Monitor, Volume2, VolumeX, Music, CheckCircle2, Film, Settings, PenLine } from 'lucide-react';
 import ToolLayout from '../../components/ToolLayout';
-import { avatarStyles } from '../../components/ProductFormSimple';
+import { avatarStyles } from '../../components/ProductForm';
 import { generateAvatarPrompt } from '../../services/qwenApi';
 import { generateImage, editImageWithAvatar, generateVideoFromImage, generateVideo } from '../../services/wanApi';
 

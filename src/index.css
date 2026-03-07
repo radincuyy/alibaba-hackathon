@@ -77,9 +77,6 @@
     @apply card cursor-pointer hover:shadow-card-hover hover:-translate-y-1 hover:border-cream-300;
   }
 
-  .card-accent {
-    @apply card border-accent/20 bg-accent-light;
-  }
 
   /* === BUTTONS === */
   .btn-primary {
@@ -128,9 +125,6 @@
     @apply input-field resize-none;
   }
 
-  .select-field {
-    @apply input-field appearance-none cursor-pointer;
-  }
 
   .label-text {
     @apply block text-sm font-medium text-cream-700 mb-2;
@@ -179,15 +173,6 @@
     @apply flex gap-8 whitespace-nowrap;
   }
 
-  /* === TOOL CARD (Generator Hub) === */
-  .tool-card {
-    @apply card-hover p-6 md:p-8 group;
-  }
-
-  .tool-card .tool-icon {
-    @apply w-12 h-12 rounded-2xl flex items-center justify-center mb-4
-           transition-transform duration-300 group-hover:scale-110;
-  }
 }
 
 @layer utilities {

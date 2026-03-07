@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Image, Loader2, Download, Package, Palette } from 'lucide-react';
 import ToolLayout from '../../components/ToolLayout';
-import ProductFormSimple from '../../components/ProductFormSimple';
+import ProductForm from '../../components/ProductForm';
 import { generateImagePrompt } from '../../services/qwenApi';
 import { generateImage } from '../../services/wanApi';
 
@@ -67,7 +67,7 @@ export default function PosterToolPage() {
         >
             <div className="card p-6 md:p-8 sticky top-24">
                 <h2 className="text-lg font-semibold text-cream-900 flex items-center gap-2 mb-6"><Package className="w-5 h-5 text-brand-400" /> Detail Produk</h2>
-                <ProductFormSimple
+                <ProductForm
                     onSubmit={handleSubmit}
                     isLoading={isLoading}
                     fields={{ image: true }}

@@ -1,0 +1,12 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/dashscope-compatible/:path*",
+            "destination": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/:path*"
+        },
+        {
+            "source": "/api/dashscope/:path*",
+            "destination": "https://dashscope-intl.aliyuncs.com/api/v1/:path*"
+        }
+    ]
+}

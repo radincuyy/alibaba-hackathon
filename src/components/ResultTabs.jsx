@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Check, RefreshCw, Instagram, ShoppingBag, Music, MessageCircle, Twitter, Loader2, ImageIcon, Video, UserCircle, Download, Sparkles } from 'lucide-react';
+import { Copy, Check, RefreshCw, Instagram, ShoppingBag, Music, MessageCircle, Twitter, Loader2, UserCircle, Download, Sparkles } from 'lucide-react';
 
 const platformConfig = {
     instagram: {
@@ -77,7 +77,7 @@ function CopyButton({ text }) {
     );
 }
 
-function MediaCard({ icon: Icon, title, subtitle, gradient, isLoading, loadingText, loadingSubtext, content, error, errorMsg, emptyText, downloadLabel, downloadUrl, isVideo }) {
+function MediaCard({ icon: Icon, title, subtitle, gradient, isLoading, loadingText, loadingSubtext, content, error, errorMsg, emptyText, downloadLabel, isVideo }) {
     return (
         <div className="glass-card p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -143,9 +143,9 @@ function MediaCard({ icon: Icon, title, subtitle, gradient, isLoading, loadingTe
 }
 
 export default function ResultTabs({
-    results, isLoading, isImageLoading, isVideoLoading, isAvatarLoading,
-    onRegenerate, generatedImage, generatedVideo, generatedAvatar,
-    imageError, videoError, avatarError, avatarLabel, hasAvatar
+    results, isLoading, isAvatarLoading,
+    onRegenerate, generatedAvatar,
+    avatarError, avatarLabel, hasAvatar
 }) {
     const [activeTab, setActiveTab] = useState('instagram');
 
@@ -180,9 +180,7 @@ export default function ResultTabs({
 
     // Media tabs config
     const mediaTabs = [
-        { id: 'image', label: 'Poster AI', icon: ImageIcon, loading: isImageLoading },
         ...(hasAvatar ? [{ id: 'avatar', label: 'Avatar AI', icon: UserCircle, loading: isAvatarLoading }] : []),
-        { id: 'video', label: 'Video AI', icon: Video, loading: isVideoLoading },
     ];
 
     return (
@@ -232,22 +230,7 @@ export default function ResultTabs({
             </div>
 
             {/* Content Area */}
-            {activeTab === 'image' ? (
-                <MediaCard
-                    icon={ImageIcon}
-                    title="Poster AI Generated"
-                    subtitle="Powered by Wan 2.6 Model"
-                    gradient="from-purple-500 to-pink-500"
-                    isLoading={isImageLoading}
-                    loadingText="Sedang membuat poster promosi..."
-                    loadingSubtext="Proses ini membutuhkan waktu ~30 detik"
-                    content={generatedImage}
-                    error={imageError}
-                    errorMsg="Gagal generate poster"
-                    emptyText="Poster akan di-generate setelah konten teks selesai"
-                    downloadLabel="umkm-kreator-poster.png"
-                />
-            ) : activeTab === 'avatar' ? (
+            {activeTab === 'avatar' ? (
                 <MediaCard
                     icon={UserCircle}
                     title={`Avatar AI — ${avatarLabel || 'Promotor'}`}
@@ -261,22 +244,6 @@ export default function ResultTabs({
                     errorMsg="Gagal generate avatar"
                     emptyText="Avatar akan di-generate setelah konten teks selesai"
                     downloadLabel="umkm-kreator-avatar.png"
-                />
-            ) : activeTab === 'video' ? (
-                <MediaCard
-                    icon={Video}
-                    title={hasAvatar ? "Video Avatar Promo" : "Video Promo AI"}
-                    subtitle={hasAvatar ? "Avatar bergerak & mempromosikan produk" : "Powered by Wan 2.6 Video Model"}
-                    gradient="from-red-500 to-orange-500"
-                    isLoading={isVideoLoading}
-                    loadingText={hasAvatar ? "Menganimasikan avatar promotor..." : "Sedang membuat video promo..."}
-                    loadingSubtext={hasAvatar ? "Avatar sedang bergerak dan mempromosikan produkmu ~1-3 menit" : "Video membutuhkan waktu 1-3 menit"}
-                    content={generatedVideo}
-                    error={videoError}
-                    errorMsg="Gagal generate video"
-                    emptyText="Video akan di-generate setelah poster/avatar selesai"
-                    downloadLabel="umkm-kreator-video.mp4"
-                    isVideo
                 />
             ) : (
                 /* Text platform content */
