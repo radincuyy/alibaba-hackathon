@@ -245,7 +245,7 @@ export default function R2VStudioPage() {
                                         >
                                             <Plus className="w-6 h-6" />
                                             <span className="text-[10px] mt-1">Upload</span>
-                                            <span className="text-[8px] text-white/20 mt-0.5">Foto / Video</span>
+                                            <span className="text-[8px] text-cream-300 mt-0.5">Foto / Video</span>
                                         </button>
                                     )}
                                 </div>
@@ -259,7 +259,7 @@ export default function R2VStudioPage() {
                                     onChange={handleFileUpload}
                                 />
 
-                                <p className="text-[10px] text-white/20">
+                                <p className="text-[10px] text-cream-300">
                                     {references.length}/5 referensi • Foto: JPG, PNG, WEBP • Video: MP4
                                 </p>
                             </div>
@@ -362,7 +362,7 @@ export default function R2VStudioPage() {
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-[9px] text-white/20 mt-1.5">{size.replace('*', ' × ')} px</p>
+                                    <p className="text-[9px] text-cream-300 mt-1.5">{size.replace('*', ' × ')} px</p>
                                 </div>
 
                                 {/* Video Style + Audio */}
@@ -483,7 +483,7 @@ export default function R2VStudioPage() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-white/20">
+                                    <div className="flex-1 flex flex-col items-center justify-center text-cream-400">
                                         <Film className="w-16 h-16 mb-3" />
                                         <p className="text-sm text-center">
                                             Upload foto/video referensi dan isi prompt,

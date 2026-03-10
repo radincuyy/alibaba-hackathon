@@ -28,7 +28,7 @@ export default function CaptionToolPage() {
         <ToolLayout
             icon={FileText}
             title="Caption & Konten AI"
-            description="Generate caption 5 platform sosial media sekaligus"
+            description="Generate caption 6 platform sosial media sekaligus"
             gradient="from-orange-500 to-amber-500"
             showResults={showResults}
             rightPanel={
@@ -48,7 +48,7 @@ export default function CaptionToolPage() {
                 <ProductForm
                     onSubmit={handleSubmit}
                     isLoading={isLoading}
-                    fields={{ image: false, price: true, target: true }}
+                    fields={{ image: false, price: true, target: false }}
                 />
             </div>
         </ToolLayout>

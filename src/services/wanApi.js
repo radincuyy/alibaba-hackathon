@@ -138,49 +138,6 @@ export async function editImageWithAvatar(avatarBase64, productImageBase64, edit
 }
 
 /**
- * Poll for async IMAGE task completion (different from video polling)
- * Image task returns results[].url (not video_url)
- */
-async function pollImageTaskResult(taskId, maxAttempts = 60, intervalMs = 5000) {
-    for (let i = 0; i < maxAttempts; i++) {
-        try {
-            const response = await wanClient.get(`/tasks/${taskId}`);
-            const output = response.data.output;
-            const status = output?.task_status;
-
-            console.log(`⏳ Image Poll ${i + 1}/${maxAttempts}: ${status}`);
-
-            if (status === 'SUCCEEDED') {
-                // wan2.6-image returns URL in choices[0].message.content[0].image
-                const imageUrl =
-                    output?.choices?.[0]?.message?.content?.[0]?.image ||
-                    output?.results?.[0]?.url;
-                if (imageUrl) {
-                    console.log('✅ Image edit succeeded!', imageUrl.substring(0, 80));
-                    return { success: true, imageUrl, taskId };
-                } else {
-                    console.error('Task succeeded but no image URL found:', JSON.stringify(output));
-                    return { success: false, error: 'No image URL in task results' };
-                }
-            } else if (status === 'FAILED') {
-                console.error('❌ Image edit task failed:', JSON.stringify(output));
-                return {
-                    success: false,
-                    error: output?.message || output?.code || 'Image editing failed',
-                    taskId,
-                };
-            }
-
-            await new Promise(resolve => setTimeout(resolve, intervalMs));
-        } catch (error) {
-            console.error('Image poll error:', error.response?.data || error.message);
-        }
-    }
-
-    return { success: false, error: 'Image editing timed out', taskId };
-}
-
-/**
  * Generate video using Wan 2.6 T2V (text-to-video) — async with polling
  * Model: wan2.6-t2v
  */
@@ -224,17 +181,15 @@ export async function generateVideo(prompt) {
  * @param {string} options.resolution - '720P' or '1080P' (default: '1080P')
  * @param {number} options.duration - 2-15 seconds (default: 5)
  * @param {boolean} options.audio - Enable auto audio (default: true)
- * @param {string} options.audioUrl - Custom audio file URL (optional)
  */
 export async function generateVideoFromImage(imageUrl, prompt, options = {}) {
     const {
         resolution = '1080P',
         duration = 5,
         audio = true,
-        audioUrl = null,
     } = options;
 
-    console.log(`🎬 I2V: res=${resolution}, dur=${duration}s, audio=${audio}, customAudio=${!!audioUrl}`);
+    console.log(`🎬 I2V: res=${resolution}, dur=${duration}s, audio=${audio}`);
     console.log('Image URL:', imageUrl?.substring(0, 80));
 
     try {
@@ -242,11 +197,6 @@ export async function generateVideoFromImage(imageUrl, prompt, options = {}) {
             prompt: prompt || 'Smooth cinematic animation of this product, gentle camera movement, professional lighting',
             img_url: imageUrl,
         };
-
-        // Add custom audio URL if provided
-        if (audioUrl) {
-            input.audio_url = audioUrl;
-        }
 
         const submitResponse = await wanAsyncClient.post('/services/aigc/video-generation/video-synthesis', {
             model: 'wan2.6-i2v-flash',
@@ -353,10 +303,70 @@ export async function generateR2V(prompt, referenceUrls = [], options = {}) {
     }
 }
 
+/**
+ * Generate poster image using Qwen Image 2.0 Pro
+ * Model: qwen-image-2.0-pro
+ * Supports both text-to-image and image+prompt editing in one function
+ *
+ * @param {string} prompt - Text prompt describing the poster
+ * @param {string|null} imageBase64
+ */
+export async function generatePosterImage(prompt, imageBase64 = null) {
+    console.log(`🎨 Generating poster with qwen-image-2.0-pro (${imageBase64 ? 'image+text' : 'text-only'})...`);
+
+    // Build content array
+    const content = [];
+    if (imageBase64) {
+        content.push({ image: imageBase64 });
+    }
+    content.push({ text: prompt });
+
+    try {
+        const response = await wanClient.post('/services/aigc/multimodal-generation/generation', {
+            model: 'qwen-image-2.0-pro',
+            input: {
+                messages: [
+                    {
+                        role: 'user',
+                        content: content,
+                    }
+                ]
+            },
+            parameters: {
+                size: '1280*1280',
+                n: 1,
+                watermark: false,
+            },
+        });
+
+        console.log('✅ Poster response received');
+
+        const choices = response.data?.output?.choices;
+        if (choices && choices.length > 0) {
+            const msgContent = choices[0]?.message?.content;
+            if (msgContent && msgContent.length > 0) {
+                const imageUrl = msgContent[0]?.image;
+                if (imageUrl) {
+                    console.log('🖼️ Poster generated successfully!');
+                    return { success: true, imageUrl };
+                }
+            }
+        }
+
+        console.error('Unexpected response:', JSON.stringify(response.data));
+        return { success: false, error: 'Format response tidak sesuai' };
+    } catch (error) {
+        const errMsg = error.response?.data?.message || error.response?.data?.error?.message || error.message;
+        console.error('❌ Qwen Image 2.0 Pro Error:', errMsg);
+        return { success: false, error: errMsg };
+    }
+}
+
 export default {
     generateImage,
     editImageWithAvatar,
     generateVideo,
     generateVideoFromImage,
     generateR2V,
+    generatePosterImage,
 };

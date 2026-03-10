@@ -74,7 +74,7 @@ export default function MarketplaceToolPage() {
                 <ProductForm
                     onSubmit={handleSubmit}
                     isLoading={isLoading}
-                    fields={{ image: false, price: true, target: true }}
+                    fields={{ image: false, price: true, target: false }}
                 />
             </div>
         </ToolLayout>

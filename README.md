@@ -50,7 +50,7 @@ UMKM Kreator provides **6 AI-powered tools** designed around real UMKM workflows
 
 | # | Tool | Description | AI Model |
 |---|------|-------------|----------|
-| 🖊️ | **Caption & Konten** | Generate captions for Instagram, Shopee, TikTok, WhatsApp, and Twitter/X — all at once | Qwen AI |
+| 🖊️ | **Caption & Konten** | Generate captions for Instagram, Shopee, TikTok, WhatsApp, Twitter/X, and Facebook — all at once | Qwen AI |
 | 🖼️ | **Poster Produk** | Create professional promotional posters from product descriptions or photos | Wan 2.6 T2I |
 | 👤 | **Avatar Produk** | Generate AI virtual promoters — use your own face or AI-preset characters | Qwen VL + Wan 2.6 |
 | 🎬 | **Video Promosi** | Create short promotional videos from product images or avatars with custom resolution & audio | Wan 2.6 I2V |
@@ -60,7 +60,7 @@ UMKM Kreator provides **6 AI-powered tools** designed around real UMKM workflows
 ### Key Highlights
 
 - ⚡ **Fast Generation** — Content generated in <30 seconds
-- 🌐 **Multi-Platform** — One input, 5+ platform outputs (Instagram, TikTok, Shopee, WhatsApp, X)
+- 🌐 **Multi-Platform** — One input, 6 platform outputs (Instagram, TikTok, Shopee, WhatsApp, X, Facebook)
 - 🇮🇩 **Made for Indonesia** — All prompts and outputs in Bahasa Indonesia
 - 🎨 **Premium UI/UX** — Beautiful, responsive design with smooth animations
 - 📱 **Mobile Friendly** — Fully responsive across all devices

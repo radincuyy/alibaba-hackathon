@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Check, RefreshCw, Instagram, ShoppingBag, Music, MessageCircle, Twitter, Loader2, UserCircle, Download, Sparkles } from 'lucide-react';
+import { Copy, Check, RefreshCw, Instagram, ShoppingBag, Music, MessageCircle, Twitter, Facebook, Loader2, UserCircle, Download, Sparkles } from 'lucide-react';
 
 const platformConfig = {
     instagram: {
@@ -31,6 +31,12 @@ const platformConfig = {
         icon: Twitter,
         color: 'from-blue-400 to-blue-600',
         badge: 'bg-blue-500/20 text-blue-400',
+    },
+    facebook: {
+        name: 'Facebook',
+        icon: Facebook,
+        color: 'from-blue-600 to-indigo-600',
+        badge: 'bg-indigo-500/20 text-indigo-400',
     },
 };
 
@@ -264,7 +270,7 @@ export default function ResultTabs({
                     </div>
 
                     {currentResult?.success ? (
-                        <div className="bg-dark-900/50 rounded-xl p-4 border border-white/5">
+                        <div className="bg-cream-100 rounded-xl p-4 border border-cream-300/50">
                             <pre className="text-sm text-cream-600 whitespace-pre-wrap leading-relaxed font-sans">
                                 {currentResult.content}
                             </pre>

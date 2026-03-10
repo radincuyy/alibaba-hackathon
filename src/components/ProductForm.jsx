@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, Tag, DollarSign, Star, Users, Sparkles, Loader2, Upload, UserCircle, Camera, X } from 'lucide-react';
+import { Package, Tag, DollarSign, Star, Sparkles, Loader2, Upload, UserCircle, Camera, X } from 'lucide-react';
 
 const categories = [
     'Makanan & Minuman',
@@ -53,12 +53,12 @@ const ensureMinImageSize = (base64, minSize = 512) => {
  * Reusable product form.
  *
  * @param {Object} fields - Which fields to show:
- *   { image, name, category, avatar, price, description, target }
+ *   { image, name, category, avatar, price, description }
  * @param {Object} labels - Custom labels/placeholders:
  *   { description: { label, placeholder, hint } }
  */
 export default function ProductForm({ onSubmit, isLoading, fields = {}, labels = {} }) {
-    const defaults = { image: true, name: true, category: true, avatar: false, price: false, description: true, target: false };
+    const defaults = { image: true, name: true, category: true, avatar: false, price: false, description: true };
     const f = { ...defaults, ...fields };
 
     const descLabels = {
@@ -69,7 +69,7 @@ export default function ProductForm({ onSubmit, isLoading, fields = {}, labels =
     };
 
     const [formData, setFormData] = useState({
-        name: '', category: '', price: '', description: '', target: '',
+        name: '', category: '', price: '', description: '',
         imageFile: null, imagePreview: null,
         avatarStyle: 'none', customAvatarFile: null, customAvatarPreview: null,
     });
@@ -281,20 +281,7 @@ export default function ProductForm({ onSubmit, isLoading, fields = {}, labels =
                 </div>
             )}
 
-            {/* Target */}
-            {f.target && (
-                <div>
-                    <label className="label-text flex items-center gap-2">
-                        <Users className="w-4 h-4 text-accent" />
-                        Target Audience (opsional)
-                    </label>
-                    <input
-                        type="text" className="input-field"
-                        placeholder="Contoh: Pecinta pedas usia 18-35 tahun"
-                        value={formData.target} onChange={(e) => update('target', e.target.value)}
-                    />
-                </div>
-            )}
+
 
             {/* Avatar Summary */}
             {f.avatar && formData.avatarStyle !== 'none' && (

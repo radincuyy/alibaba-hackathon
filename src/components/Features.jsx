@@ -5,7 +5,7 @@ const tools = [
     {
         icon: PenTool,
         title: 'Caption & Konten',
-        description: 'Generate caption Instagram, deskripsi Shopee, script TikTok, broadcast WhatsApp, dan thread X.',
+        description: 'Generate caption Instagram, deskripsi Shopee, script TikTok, broadcast WhatsApp, thread X, dan postingan Facebook.',
         tag: 'Qwen AI',
         color: 'bg-amber-500',
         link: '/generator/caption',
@@ -13,8 +13,8 @@ const tools = [
     {
         icon: Image,
         title: 'Poster Produk',
-        description: 'Buat poster promosi profesional dari deskripsi atau foto produk. AI desain visual eye-catching otomatis.',
-        tag: 'Wan 2.6',
+        description: 'Buat poster produk profesional dengan deskripsi dan foto. AI generate visual eye-catching otomatis.',
+        tag: 'Qwen Image 2.0 Pro',
         color: 'bg-blue-500',
         link: '/generator/poster',
     },
