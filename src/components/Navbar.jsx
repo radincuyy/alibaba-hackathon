@@ -1,8 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
+import { cn } from '../utils/cn';
 
-export default function Navbar() {
+const NAV_LINKS = [
+    { hash: '#tools', label: 'Tools' },
+    { hash: '#how-it-works', label: 'Cara Kerja' },
+    { hash: '#cta', label: 'Tentang' },
+];
+
+function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const location = useLocation();
@@ -11,43 +18,61 @@ export default function Navbar() {
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 50);
-        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const handleNavClick = (e, hash) => {
-        e.preventDefault();
+    // Close mobile menu on route change
+    useEffect(() => {
         setIsOpen(false);
-        if (isHome) {
-            // Already on home, just scroll
-            const el = document.querySelector(hash);
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-        } else {
-            // Navigate to home + hash
-            navigate('/' + hash);
-        }
-    };
+    }, [location.pathname]);
+
+    const handleNavClick = useCallback(
+        (e, hash) => {
+            e.preventDefault();
+            setIsOpen(false);
+            if (isHome) {
+                const el = document.querySelector(hash);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                navigate('/' + hash);
+            }
+        },
+        [isHome, navigate],
+    );
+
+    const toggleMenu = useCallback(() => setIsOpen((prev) => !prev), []);
 
     return (
         <nav
-            className={`fixed z-50 transition-all duration-500 ${scrolled
-                ? 'top-4 left-6 right-6 bg-white/80 backdrop-blur-xl border border-cream-300/50 shadow-card rounded-2xl'
-                : 'top-0 left-0 right-0 bg-transparent'
-                }`}
+            aria-label="Navigasi utama"
+            className={cn(
+                'fixed z-50 transition-all duration-500',
+                scrolled
+                    ? 'top-4 left-6 right-6 bg-white/80 backdrop-blur-xl border border-cream-300/50 shadow-card rounded-2xl'
+                    : 'top-0 left-0 right-0 bg-transparent',
+            )}
         >
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
                     <Link to="/" className="flex items-center gap-2.5 group">
-                        <img src="/logo.png" alt="UMKM Kreator" className="w-8 h-8 object-contain" />
+                        <img src="/logo.png" alt="" className="w-8 h-8 object-contain" aria-hidden="true" />
                         <span className="font-bold text-cream-900 tracking-tight text-lg">UMKM Kreator</span>
                     </Link>
 
                     {/* Desktop Nav */}
                     <div className="hidden md:flex items-center gap-1">
-                        <a href="/#tools" onClick={(e) => handleNavClick(e, '#tools')} className="btn-ghost text-sm">Tools</a>
-                        <a href="/#how-it-works" onClick={(e) => handleNavClick(e, '#how-it-works')} className="btn-ghost text-sm">Cara Kerja</a>
-                        <a href="/#cta" onClick={(e) => handleNavClick(e, '#cta')} className="btn-ghost text-sm">Tentang</a>
+                        {NAV_LINKS.map(({ hash, label }) => (
+                            <a
+                                key={hash}
+                                href={`/${hash}`}
+                                onClick={(e) => handleNavClick(e, hash)}
+                                className="btn-ghost text-sm"
+                            >
+                                {label}
+                            </a>
+                        ))}
                         <Link to="/generator" className="btn-primary text-sm ml-3">
                             Mulai Buat Konten
                         </Link>
@@ -55,9 +80,12 @@ export default function Navbar() {
 
                     {/* Mobile Toggle */}
                     <button
-                        onClick={() => setIsOpen(!isOpen)}
+                        type="button"
+                        onClick={toggleMenu}
                         className="md:hidden p-2 rounded-xl hover:bg-cream-200/50 transition-colors cursor-pointer"
-                        aria-label="Toggle menu"
+                        aria-label={isOpen ? 'Tutup menu' : 'Buka menu'}
+                        aria-expanded={isOpen}
+                        aria-controls="mobile-menu"
                     >
                         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                     </button>
@@ -66,12 +94,29 @@ export default function Navbar() {
 
             {/* Mobile Menu */}
             {isOpen && (
-                <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-cream-300/50 rounded-b-2xl animate-slide-in">
+                <div
+                    id="mobile-menu"
+                    className="md:hidden bg-white/95 backdrop-blur-xl border-t border-cream-300/50 rounded-b-2xl animate-slide-in"
+                    role="menu"
+                >
                     <div className="px-6 py-4 space-y-1">
-                        <a href="/#tools" onClick={(e) => handleNavClick(e, '#tools')} className="block px-4 py-3 rounded-xl hover:bg-cream-100 text-cream-700 hover:text-cream-900 transition-colors">Tools</a>
-                        <a href="/#how-it-works" onClick={(e) => handleNavClick(e, '#how-it-works')} className="block px-4 py-3 rounded-xl hover:bg-cream-100 text-cream-700 hover:text-cream-900 transition-colors">Cara Kerja</a>
-                        <a href="/#cta" onClick={(e) => handleNavClick(e, '#cta')} className="block px-4 py-3 rounded-xl hover:bg-cream-100 text-cream-700 hover:text-cream-900 transition-colors">Tentang</a>
-                        <Link to="/generator" onClick={() => setIsOpen(false)} className="btn-accent w-full !mt-3 text-sm">
+                        {NAV_LINKS.map(({ hash, label }) => (
+                            <a
+                                key={hash}
+                                href={`/${hash}`}
+                                onClick={(e) => handleNavClick(e, hash)}
+                                className="block px-4 py-3 rounded-xl hover:bg-cream-100 text-cream-700 hover:text-cream-900 transition-colors"
+                                role="menuitem"
+                            >
+                                {label}
+                            </a>
+                        ))}
+                        <Link
+                            to="/generator"
+                            onClick={() => setIsOpen(false)}
+                            className="btn-accent w-full !mt-3 text-sm"
+                            role="menuitem"
+                        >
                             Mulai Buat Konten
                         </Link>
                     </div>
@@ -80,3 +125,5 @@ export default function Navbar() {
         </nav>
     );
 }
+
+export default memo(Navbar);

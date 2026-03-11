@@ -1,6 +1,9 @@
-import { useState, useRef } from 'react';
-import { Image, Loader2, Package, Palette, Sparkles, Download, RotateCcw, Upload, X, ImageIcon } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Image, Loader2, Package, Palette, Sparkles, Download, RotateCcw, ImageIcon } from 'lucide-react';
 import ToolLayout from '../../components/ToolLayout';
+import ImageUploader from '../../components/ui/ImageUploader';
+import TemplateGrid from '../../components/ui/TemplateGrid';
+import SubmitButton from '../../components/ui/SubmitButton';
 import { generatePosterImage } from '../../services/wanApi';
 
 const PHOTO_TEMPLATES = [
@@ -21,24 +24,6 @@ const TEXT_TEMPLATES = [
     { label: 'Herbal', prompt: 'Poster produk herbal dengan nuansa hijau alami, daun-daun segar, dan tetesan air yang berkilau' },
 ];
 
-const ensureMinImageSize = (base64, minSize = 512) => {
-    return new Promise((resolve) => {
-        const img = new window.Image();
-        img.onload = () => {
-            const { width, height } = img;
-            if (width >= minSize && height >= minSize) { resolve(base64); return; }
-            const scale = Math.max(minSize / width, minSize / height);
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.round(width * scale);
-            canvas.height = Math.round(height * scale);
-            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.95));
-        };
-        img.onerror = () => resolve(base64);
-        img.src = base64;
-    });
-};
-
 export default function PosterToolPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -46,55 +31,59 @@ export default function PosterToolPage() {
     const [prompt, setPrompt] = useState('');
     const [productImage, setProductImage] = useState(null);
     const [generatedImage, setGeneratedImage] = useState(null);
-    const fileInputRef = useRef(null);
+    const abortControllerRef = useRef(null);
 
-    const templates = productImage ? PHOTO_TEMPLATES : TEXT_TEMPLATES;
+    const templates = useMemo(
+        () => (productImage ? PHOTO_TEMPLATES : TEXT_TEMPLATES),
+        [productImage],
+    );
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (ev) => setProductImage(await ensureMinImageSize(ev.target.result));
-        reader.readAsDataURL(file);
-    };
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            abortControllerRef.current?.abort();
+        };
+    }, []);
 
-    const clearImage = () => {
-        setProductImage(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-
-    const handleGenerate = async () => {
+    const handleGenerate = useCallback(async () => {
         if (!prompt.trim()) return;
+
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setIsLoading(true);
         setShowResults(true);
         setError(null);
         setGeneratedImage(null);
 
         try {
-            let result;
-
             const enhancedPrompt = `${prompt.trim()}. Iklan produk profesional, kualitas tinggi, warna cerah, desain modern.`;
+            const result = await generatePosterImage(enhancedPrompt, productImage || null, { signal: controller.signal });
 
-            // Use qwen-image-2.0-pro (handles both with/without photo)
-            result = await generatePosterImage(enhancedPrompt, productImage || null);
-
-            if (result.success) {
-                setGeneratedImage(result.imageUrl);
-            } else {
-                setError(result.error || 'Gagal generate poster');
+            if (!controller.signal.aborted) {
+                if (result.success) {
+                    setGeneratedImage(result.imageUrl);
+                } else {
+                    setError(result.error || 'Gagal generate poster');
+                }
             }
         } catch (e) {
-            setError(e.message);
+            if (!controller.signal.aborted) {
+                setError(e.message);
+            }
         } finally {
-            setIsLoading(false);
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+            }
         }
-    };
+    }, [prompt, productImage]);
 
-    const handleReset = () => {
+    const handleReset = useCallback(() => {
         setShowResults(false);
         setGeneratedImage(null);
         setError(null);
-    };
+    }, []);
 
     return (
         <ToolLayout
@@ -106,28 +95,30 @@ export default function PosterToolPage() {
             rightPanel={
                 <div className="card p-6">
                     <h3 className="text-lg font-bold text-cream-900 mb-4 flex items-center gap-2">
-                        <Palette className="w-5 h-5 text-blue-400" /> Hasil Poster
+                        <Palette className="w-5 h-5 text-blue-400" aria-hidden="true" /> Hasil Poster
                     </h3>
 
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-cream-400">
-                            <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-3" />
+                        <div className="flex flex-col items-center justify-center py-20 text-cream-400" role="status">
+                            <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-3" aria-hidden="true" />
                             <p className="text-sm font-medium">Generating poster...</p>
                             <p className="text-xs text-cream-300 mt-1">Proses ini memakan waktu 30-60 detik</p>
                         </div>
                     ) : error ? (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center" role="alert">
                             <p className="text-red-600 text-sm">{error}</p>
-                            <button onClick={handleReset} className="btn-outline !py-2 !px-4 mt-3 !text-xs">Coba Lagi</button>
+                            <button type="button" onClick={handleReset} className="btn-outline !py-2 !px-4 mt-3 !text-xs">
+                                Coba Lagi
+                            </button>
                         </div>
                     ) : generatedImage ? (
                         <div>
                             <img src={generatedImage} alt="Generated Poster" className="w-full rounded-xl" />
                             <div className="flex gap-3 mt-4">
                                 <a href={generatedImage} download="poster-ai.png" target="_blank" rel="noopener noreferrer" className="btn-accent flex-1 !py-3">
-                                    <Download className="w-4 h-4" /> Download
+                                    <Download className="w-4 h-4" aria-hidden="true" /> Download
                                 </a>
-                                <button onClick={handleReset} className="btn-outline !py-3 !px-4" title="Generate ulang">
+                                <button type="button" onClick={handleReset} className="btn-outline !py-3 !px-4" title="Generate ulang" aria-label="Generate ulang">
                                     <RotateCcw className="w-4 h-4" />
                                 </button>
                             </div>
@@ -138,56 +129,35 @@ export default function PosterToolPage() {
         >
             <div className="card p-6 md:p-8 sticky top-24">
                 <h2 className="text-lg font-semibold text-cream-900 flex items-center gap-2 mb-6">
-                    <Package className="w-5 h-5 text-brand-400" /> Buat Poster
+                    <Package className="w-5 h-5 text-brand-400" aria-hidden="true" /> Buat Poster
                 </h2>
 
                 <div className="space-y-5">
                     {/* Photo Upload */}
-                    <div>
-                        <label className="label-text flex items-center gap-2">
-                            <Upload className="w-4 h-4 text-accent" />
-                            Foto Produk (opsional)
-                        </label>
-                        <div
-                            className="border-2 border-dashed border-cream-300 rounded-xl hover:border-accent/30 transition-colors cursor-pointer overflow-hidden"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            {productImage ? (
-                                <div className="relative group">
-                                    <img src={productImage} alt="Preview" className="w-full h-40 object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <span className="text-sm text-white font-medium">Klik untuk ganti</span>
-                                    </div>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); clearImage(); }}
-                                        className="absolute top-2 right-2 w-7 h-7 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center transition-colors"
-                                    >
-                                        <X className="w-4 h-4 text-white" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="h-28 flex flex-col items-center justify-center text-cream-400">
-                                    <ImageIcon className="w-8 h-8 mb-2" />
-                                    <span className="text-sm">Klik untuk upload foto produk</span>
-                                    <span className="text-xs text-cream-300 mt-0.5">AI akan menggunakan foto ini dalam poster</span>
-                                </div>
-                            )}
-                        </div>
-                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                    </div>
+                    <ImageUploader
+                        value={productImage}
+                        onChange={setProductImage}
+                        label="Foto Produk (opsional)"
+                        labelIcon={ImageIcon}
+                        emptyText="Klik untuk upload foto produk"
+                        emptySubtext="AI akan menggunakan foto ini dalam poster"
+                        emptyIcon={ImageIcon}
+                        previewHeight="h-40"
+                    />
 
                     {/* Prompt */}
                     <div>
                         <label className="label-text flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-accent" />
+                            <Sparkles className="w-4 h-4 text-accent" aria-hidden="true" />
                             Deskripsi Poster <span className="text-red-500">*</span>
                         </label>
                         <textarea
                             className="textarea-field"
                             rows={4}
-                            placeholder={productImage
-                                ? 'Deskripsikan poster yang ingin dibuat dari foto ini...'
-                                : 'Deskripsikan poster yang ingin kamu buat...'
+                            placeholder={
+                                productImage
+                                    ? 'Deskripsikan poster yang ingin dibuat dari foto ini...'
+                                    : 'Deskripsikan poster yang ingin kamu buat...'
                             }
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
@@ -195,39 +165,20 @@ export default function PosterToolPage() {
                     </div>
 
                     {/* Template Prompts */}
-                    <div>
-                        <p className="text-xs text-cream-400 mb-2 flex items-center gap-1">
-                            💡 {productImage ? 'Template untuk foto produk:' : 'Template tanpa foto:'}
-                        </p>
-                        <div className="grid grid-cols-2 gap-1.5">
-                            {templates.map((t, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setPrompt(t.prompt)}
-                                    className={`text-xs px-3 py-2 rounded-xl text-left transition-all cursor-pointer border ${
-                                        prompt === t.prompt
-                                            ? 'bg-accent/10 border-accent/30 text-accent font-medium'
-                                            : 'bg-cream-100 text-cream-500 hover:bg-cream-200 hover:text-cream-700 border-cream-200'
-                                    }`}
-                                >
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    <TemplateGrid
+                        templates={templates}
+                        currentValue={prompt}
+                        onSelect={setPrompt}
+                        heading={productImage ? 'Template untuk foto produk:' : 'Template tanpa foto:'}
+                    />
 
                     {/* Generate Button */}
-                    <button
-                        className="btn-primary w-full !py-4"
-                        disabled={!prompt.trim() || isLoading}
+                    <SubmitButton
+                        isLoading={isLoading}
+                        disabled={!prompt.trim()}
                         onClick={handleGenerate}
-                    >
-                        {isLoading ? (
-                            <><Loader2 className="w-5 h-5 animate-spin" /> Generating...</>
-                        ) : (
-                            <><Sparkles className="w-5 h-5" /> Generate Poster</>
-                        )}
-                    </button>
+                        label="Generate Poster"
+                    />
                 </div>
             </div>
         </ToolLayout>

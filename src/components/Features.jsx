@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { PenTool, Image, UserCircle, Video, ShoppingBag, Film, ArrowUpRight } from 'lucide-react';
 
@@ -52,9 +53,9 @@ const tools = [
     },
 ];
 
-export default function Features() {
+function Features() {
     return (
-        <section id="tools" className="relative py-24 md:py-32">
+        <section id="tools" className="relative py-24 md:py-32" aria-label="AI Tools">
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
                 {/* Section Header */}
                 <div className="mb-16 max-w-2xl">
@@ -69,19 +70,21 @@ export default function Features() {
                 </div>
 
                 {/* Tools Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5" role="list">
                     {tools.map((tool, i) => (
                         <Link
                             key={i}
                             to={tool.link}
                             className="card-hover p-6 md:p-8 group opacity-0 animate-fade-up"
                             style={{ animationDelay: `${i * 0.1}s` }}
+                            role="listitem"
+                            aria-label={`${tool.title} AI — ${tool.description}`}
                         >
                             <div className="flex items-start justify-between mb-5">
                                 <div className={`w-12 h-12 rounded-2xl ${tool.color} flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                                    <tool.icon className="w-5 h-5 text-white" />
+                                    <tool.icon className="w-5 h-5 text-white" aria-hidden="true" />
                                 </div>
-                                <ArrowUpRight className="w-5 h-5 text-cream-400 group-hover:text-accent group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
+                                <ArrowUpRight className="w-5 h-5 text-cream-400 group-hover:text-accent group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" aria-hidden="true" />
                             </div>
 
                             <div className="mb-3">
@@ -102,3 +105,5 @@ export default function Features() {
         </section>
     );
 }
+
+export default memo(Features);

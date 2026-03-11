@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const DASHSCOPE_API_KEY = import.meta.env.VITE_DASHSCOPE_API_KEY || '';
 
-// Use Vite proxy to avoid CORS issues
+// Synchronous client
 const wanClient = axios.create({
     baseURL: '/api/dashscope',
     headers: {
@@ -11,6 +11,7 @@ const wanClient = axios.create({
     },
 });
 
+// Async client (for long-running tasks that need polling)
 const wanAsyncClient = axios.create({
     baseURL: '/api/dashscope',
     headers: {
@@ -20,227 +21,201 @@ const wanAsyncClient = axios.create({
     },
 });
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 /**
- * Generate image using Wan 2.6 SYNCHRONOUS API
- * Model: wan2.6-t2i
+ * Extract the first image URL from a multimodal generation response.
+ * Shared by generateImage, editImageWithAvatar, and generatePosterImage.
+ *
+ * @param {object} data - Axios response.data
+ * @returns {string|null}
  */
-export async function generateImage(prompt) {
-    console.log('🎨 Generating image with wan2.6-t2i (sync mode)...');
+function extractImageUrl(data) {
+    const content = data?.output?.choices?.[0]?.message?.content;
+    return content?.[0]?.image ?? null;
+}
 
+/**
+ * Extract a human-readable error message from an Axios error.
+ * @param {Error} error
+ * @returns {string}
+ */
+function extractErrorMessage(error) {
+    return (
+        error.response?.data?.message ||
+        error.response?.data?.error?.message ||
+        error.message
+    );
+}
+
+/**
+ * Check if the error is an AbortController cancellation.
+ * @param {Error} error
+ * @returns {boolean}
+ */
+function isAborted(error) {
+    return axios.isCancel(error) || error.name === 'AbortError';
+}
+
+// ─── Synchronous APIs ───────────────────────────────────────────────────────
+
+/**
+ * Generate image using Wan 2.6 T2I (synchronous).
+ *
+ * @param {string} prompt
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{success: boolean, imageUrl?: string, error?: string}>}
+ */
+export async function generateImage(prompt, { signal } = {}) {
     try {
-        const response = await wanClient.post('/services/aigc/multimodal-generation/generation', {
-            model: 'wan2.6-t2i',
-            input: {
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            { text: prompt }
-                        ]
-                    }
-                ]
+        const response = await wanClient.post(
+            '/services/aigc/multimodal-generation/generation',
+            {
+                model: 'wan2.6-t2i',
+                input: {
+                    messages: [
+                        { role: 'user', content: [{ text: prompt }] },
+                    ],
+                },
+                parameters: {
+                    size: '1280*1280',
+                    n: 1,
+                    prompt_extend: true,
+                    watermark: false,
+                },
             },
-            parameters: {
-                size: '1280*1280',
-                n: 1,
-                prompt_extend: true,
-                watermark: false,
-            },
-        });
+            { signal },
+        );
 
-        console.log('✅ Image response received');
-
-        const choices = response.data?.output?.choices;
-        if (choices && choices.length > 0) {
-            const content = choices[0]?.message?.content;
-            if (content && content.length > 0) {
-                const imageUrl = content[0]?.image;
-                if (imageUrl) {
-                    console.log('🖼️ Image generated successfully!');
-                    return { success: true, imageUrl };
-                }
-            }
+        const imageUrl = extractImageUrl(response.data);
+        if (imageUrl) {
+            return { success: true, imageUrl };
         }
-
         return { success: false, error: 'Format response tidak sesuai' };
     } catch (error) {
-        const errMsg = error.response?.data?.message || error.response?.data?.error?.message || error.message;
-        console.error('❌ Wan 2.6 T2I Error:', errMsg);
-        return { success: false, error: errMsg };
+        if (isAborted(error)) return { success: false, error: 'Request dibatalkan' };
+        return { success: false, error: extractErrorMessage(error) };
     }
 }
 
 /**
- * Edit image using Qwen Image Edit Max (SYNCHRONOUS, better character consistency)
- * Model: qwen-image-edit-max
- * Endpoint: /services/aigc/multimodal-generation/generation (sync)
- * Takes user's avatar photo and edits it to show them presenting a product
- * Supports base64 input, up to 3 images, character consistency preserved!
+ * Edit image using Qwen Image Edit Max (synchronous, character-consistent).
+ *
+ * @param {string} avatarBase64       - Base64 avatar/face image.
+ * @param {string} productImageBase64 - Base64 product image.
+ * @param {string} editPrompt         - Editing instructions.
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{success: boolean, imageUrl?: string, error?: string}>}
  */
-export async function editImageWithAvatar(avatarBase64, productImageBase64, editPrompt) {
-    console.log('✏️ Editing image with qwen-image-edit-max (sync, character-consistent)...');
-
-    // Build content array: images first, then text prompt
-    const content = [
-        { image: avatarBase64 },
-    ];
-
-    // If product image provided, add it too (supports up to 3 images)
+export async function editImageWithAvatar(avatarBase64, productImageBase64, editPrompt, { signal } = {}) {
+    const content = [{ image: avatarBase64 }];
     if (productImageBase64) {
         content.push({ image: productImageBase64 });
     }
-
-    // Text prompt goes last
     content.push({ text: editPrompt });
 
     try {
-        const response = await wanClient.post('/services/aigc/multimodal-generation/generation', {
-            model: 'qwen-image-edit-max',
-            input: {
-                messages: [
-                    {
-                        role: 'user',
-                        content: content,
-                    }
-                ]
+        const response = await wanClient.post(
+            '/services/aigc/multimodal-generation/generation',
+            {
+                model: 'qwen-image-edit-max',
+                input: {
+                    messages: [{ role: 'user', content }],
+                },
+                parameters: {
+                    size: '1280*1280',
+                    n: 1,
+                    prompt_extend: true,
+                    watermark: false,
+                },
             },
-            parameters: {
-                size: '1280*1280',
-                n: 1,
-                prompt_extend: true,
-                watermark: false,
-            },
-        });
+            { signal },
+        );
 
-        console.log('✅ Image edit response received');
-
-        const choices = response.data?.output?.choices;
-        if (choices && choices.length > 0) {
-            const msgContent = choices[0]?.message?.content;
-            if (msgContent && msgContent.length > 0) {
-                const imageUrl = msgContent[0]?.image;
-                if (imageUrl) {
-                    console.log('🖼️ Image edited successfully!');
-                    return { success: true, imageUrl };
-                }
-            }
+        const imageUrl = extractImageUrl(response.data);
+        if (imageUrl) {
+            return { success: true, imageUrl };
         }
-
-        console.error('Unexpected response format:', JSON.stringify(response.data));
         return { success: false, error: 'Format response tidak sesuai' };
     } catch (error) {
-        const errMsg = error.response?.data?.message || error.response?.data?.error?.message || error.message;
-        const fullError = error.response?.data ? JSON.stringify(error.response.data) : error.message;
-        console.error('❌ Qwen Image Edit Error:', errMsg);
-        console.error('❌ Full error data:', fullError);
-        return { success: false, error: errMsg };
+        if (isAborted(error)) return { success: false, error: 'Request dibatalkan' };
+        return { success: false, error: extractErrorMessage(error) };
     }
 }
 
 /**
- * Generate video using Wan 2.6 T2V (text-to-video) — async with polling
- * Model: wan2.6-t2v
- */
-export async function generateVideo(prompt) {
-    console.log('🎬 Generating video with wan2.6-t2v...');
-
-    try {
-        const submitResponse = await wanAsyncClient.post('/services/aigc/video-generation/video-synthesis', {
-            model: 'wan2.6-t2v',
-            input: {
-                prompt: prompt,
-            },
-            parameters: {
-                size: '1280*720',
-                duration: 5,
-                prompt_extend: true,
-            },
-        });
-
-        const taskId = submitResponse.data.output?.task_id;
-        if (!taskId) {
-            throw new Error('No task ID returned');
-        }
-
-        console.log('📋 Video Task ID:', taskId);
-        return await pollTaskResult(taskId);
-    } catch (error) {
-        const errMsg = error.response?.data?.message || error.response?.data?.error?.message || error.message;
-        console.error('❌ Wan 2.6 T2V Error:', errMsg);
-        return { success: false, error: errMsg };
-    }
-}
-
-/**
- * Generate video from an IMAGE using Wan 2.6 I2V (image-to-video)
- * Model: wan2.6-i2v-flash
+ * Generate poster image using Qwen Image 2.0 Pro (synchronous).
  *
- * @param {string} imageUrl - Image URL or base64 data URI
- * @param {string} prompt - Video generation prompt
- * @param {Object} options - Optional settings
- * @param {string} options.resolution - '720P' or '1080P' (default: '1080P')
- * @param {number} options.duration - 2-15 seconds (default: 5)
- * @param {boolean} options.audio - Enable auto audio (default: true)
+ * @param {string}      prompt      - Text prompt describing the poster.
+ * @param {string|null} imageBase64 - Optional base64 product image.
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{success: boolean, imageUrl?: string, error?: string}>}
  */
-export async function generateVideoFromImage(imageUrl, prompt, options = {}) {
-    const {
-        resolution = '1080P',
-        duration = 5,
-        audio = true,
-    } = options;
-
-    console.log(`🎬 I2V: res=${resolution}, dur=${duration}s, audio=${audio}`);
-    console.log('Image URL:', imageUrl?.substring(0, 80));
+export async function generatePosterImage(prompt, imageBase64 = null, { signal } = {}) {
+    const content = [];
+    if (imageBase64) {
+        content.push({ image: imageBase64 });
+    }
+    content.push({ text: prompt });
 
     try {
-        const input = {
-            prompt: prompt || 'Smooth cinematic animation of this product, gentle camera movement, professional lighting',
-            img_url: imageUrl,
-        };
-
-        const submitResponse = await wanAsyncClient.post('/services/aigc/video-generation/video-synthesis', {
-            model: 'wan2.6-i2v-flash',
-            input,
-            parameters: {
-                resolution,
-                duration,
-                prompt_extend: true,
-                audio,
+        const response = await wanClient.post(
+            '/services/aigc/multimodal-generation/generation',
+            {
+                model: 'qwen-image-2.0-pro',
+                input: {
+                    messages: [{ role: 'user', content }],
+                },
+                parameters: {
+                    size: '1280*1280',
+                    n: 1,
+                    watermark: false,
+                },
             },
-        });
+            { signal },
+        );
 
-        const taskId = submitResponse.data.output?.task_id;
-        if (!taskId) {
-            throw new Error('No task ID returned');
+        const imageUrl = extractImageUrl(response.data);
+        if (imageUrl) {
+            return { success: true, imageUrl };
         }
-
-        console.log('📋 I2V Video Task ID:', taskId);
-        return await pollTaskResult(taskId);
+        return { success: false, error: 'Format response tidak sesuai' };
     } catch (error) {
-        const errMsg = error.response?.data?.message || error.response?.data?.error?.message || error.message;
-        console.error('❌ Wan 2.6 I2V Error:', errMsg);
-        // Fallback to text-to-video
-        console.log('Falling back to text-to-video...');
-        return generateVideo(prompt);
+        if (isAborted(error)) return { success: false, error: 'Request dibatalkan' };
+        return { success: false, error: extractErrorMessage(error) };
     }
 }
 
-/**
- * Poll for async task completion
- */
-async function pollTaskResult(taskId, maxAttempts = 120, intervalMs = 5000) {
-    for (let i = 0; i < maxAttempts; i++) {
-        try {
-            const response = await wanClient.get(`/tasks/${taskId}`);
-            const output = response.data.output;
-            const status = output?.task_status;
+// ─── Async APIs (polling-based) ─────────────────────────────────────────────
 
-            console.log(`⏳ Poll ${i + 1}/${maxAttempts}: ${status}`);
+/**
+ * Poll for async task completion.
+ *
+ * @param {string} taskId
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @param {number} [options.maxAttempts=120]
+ * @param {number} [options.intervalMs=5000]
+ * @returns {Promise<{success: boolean, videoUrl?: string, error?: string, taskId: string}>}
+ */
+async function pollTaskResult(taskId, { signal, maxAttempts = 120, intervalMs = 5000 } = {}) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Check if aborted before each poll
+        if (signal?.aborted) {
+            return { success: false, error: 'Request dibatalkan', taskId };
+        }
+
+        try {
+            const response = await wanClient.get(`/tasks/${taskId}`, { signal });
+            const output = response.data?.output;
+            const status = output?.task_status;
 
             if (status === 'SUCCEEDED') {
                 const videoUrl = output?.video_url || output?.results?.[0]?.url;
                 if (videoUrl) {
-                    console.log('✅ Task succeeded!');
                     return { success: true, videoUrl, taskId };
                 }
             } else if (status === 'FAILED') {
@@ -251,8 +226,22 @@ async function pollTaskResult(taskId, maxAttempts = 120, intervalMs = 5000) {
                 };
             }
 
-            await new Promise(resolve => setTimeout(resolve, intervalMs));
+            // Wait before next poll — abort-aware
+            await new Promise((resolve, reject) => {
+                const timer = setTimeout(resolve, intervalMs);
+                if (signal) {
+                    const onAbort = () => {
+                        clearTimeout(timer);
+                        reject(new DOMException('Aborted', 'AbortError'));
+                    };
+                    signal.addEventListener('abort', onAbort, { once: true });
+                }
+            });
         } catch (error) {
+            if (isAborted(error)) {
+                return { success: false, error: 'Request dibatalkan', taskId };
+            }
+            // Log poll errors but continue trying
             console.error('Poll error:', error.response?.data || error.message);
         }
     }
@@ -261,112 +250,139 @@ async function pollTaskResult(taskId, maxAttempts = 120, intervalMs = 5000) {
 }
 
 /**
- * Generate Reference-to-Video using Wan 2.6 R2V
- * Model: wan2.6-r2v-flash
- * Preserves appearance/voice from reference images/videos
- * reference_urls: array of public image/video URLs
- * shot_type: "single" (continuous) or "multi" (multiple shots)
- * size: "1280*720", "720*1280", "960*960", "1920*1080", etc.
+ * Generate video using Wan 2.6 T2V (text-to-video) — async with polling.
+ *
+ * @param {string} prompt
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{success: boolean, videoUrl?: string, error?: string}>}
  */
-export async function generateR2V(prompt, referenceUrls = [], options = {}) {
-    console.log('🎬 Generating R2V with wan2.6-r2v-flash...');
-    console.log(`📎 ${referenceUrls.length} reference(s)`);
-
+export async function generateVideo(prompt, { signal } = {}) {
     try {
-        const submitResponse = await wanAsyncClient.post('/services/aigc/video-generation/video-synthesis', {
-            model: 'wan2.6-r2v-flash',
-            input: {
-                prompt: prompt,
-                reference_urls: referenceUrls, // array of image/video URLs
+        const submitResponse = await wanAsyncClient.post(
+            '/services/aigc/video-generation/video-synthesis',
+            {
+                model: 'wan2.6-t2v',
+                input: { prompt },
+                parameters: {
+                    size: '1280*720',
+                    duration: 5,
+                    prompt_extend: true,
+                },
             },
-            parameters: {
-                size: options.size || '1280*720',
-                duration: options.duration || 5,
-                shot_type: options.shotType || 'single',
-                audio: options.audio !== false,
-                watermark: options.watermark || false,
-            },
-        });
+            { signal },
+        );
 
-        const taskId = submitResponse.data.output?.task_id;
+        const taskId = submitResponse.data?.output?.task_id;
         if (!taskId) {
-            console.error('❌ No R2V task ID:', JSON.stringify(submitResponse.data));
-            throw new Error('No task ID returned');
+            return { success: false, error: 'No task ID returned' };
         }
 
-        console.log('📋 R2V Task ID:', taskId);
-        return await pollTaskResult(taskId);
+        return await pollTaskResult(taskId, { signal });
     } catch (error) {
-        const errMsg = error.response?.data?.message || error.response?.data?.error?.message || error.message;
-        console.error('❌ Wan R2V Error:', errMsg);
-        return { success: false, error: errMsg };
+        if (isAborted(error)) return { success: false, error: 'Request dibatalkan' };
+        return { success: false, error: extractErrorMessage(error) };
     }
 }
 
 /**
- * Generate poster image using Qwen Image 2.0 Pro
- * Model: qwen-image-2.0-pro
- * Supports both text-to-image and image+prompt editing in one function
+ * Generate video from an image using Wan 2.6 I2V (image-to-video) — async with polling.
+ * Falls back to text-to-video on error.
  *
- * @param {string} prompt - Text prompt describing the poster
- * @param {string|null} imageBase64
+ * @param {string} imageUrl  - Image URL or base64 data URI.
+ * @param {string} prompt    - Video generation prompt.
+ * @param {object} [options]
+ * @param {string}  [options.resolution='1080P']
+ * @param {number}  [options.duration=5]
+ * @param {boolean} [options.audio=true]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{success: boolean, videoUrl?: string, error?: string}>}
  */
-export async function generatePosterImage(prompt, imageBase64 = null) {
-    console.log(`🎨 Generating poster with qwen-image-2.0-pro (${imageBase64 ? 'image+text' : 'text-only'})...`);
-
-    // Build content array
-    const content = [];
-    if (imageBase64) {
-        content.push({ image: imageBase64 });
-    }
-    content.push({ text: prompt });
+export async function generateVideoFromImage(imageUrl, prompt, options = {}) {
+    const {
+        resolution = '1080P',
+        duration = 5,
+        audio = true,
+        signal,
+    } = options;
 
     try {
-        const response = await wanClient.post('/services/aigc/multimodal-generation/generation', {
-            model: 'qwen-image-2.0-pro',
-            input: {
-                messages: [
-                    {
-                        role: 'user',
-                        content: content,
-                    }
-                ]
+        const submitResponse = await wanAsyncClient.post(
+            '/services/aigc/video-generation/video-synthesis',
+            {
+                model: 'wan2.6-i2v-flash',
+                input: {
+                    prompt: prompt || 'Smooth cinematic animation of this product, gentle camera movement, professional lighting',
+                    img_url: imageUrl,
+                },
+                parameters: {
+                    resolution,
+                    duration,
+                    prompt_extend: true,
+                    audio,
+                },
             },
-            parameters: {
-                size: '1280*1280',
-                n: 1,
-                watermark: false,
-            },
-        });
+            { signal },
+        );
 
-        console.log('✅ Poster response received');
-
-        const choices = response.data?.output?.choices;
-        if (choices && choices.length > 0) {
-            const msgContent = choices[0]?.message?.content;
-            if (msgContent && msgContent.length > 0) {
-                const imageUrl = msgContent[0]?.image;
-                if (imageUrl) {
-                    console.log('🖼️ Poster generated successfully!');
-                    return { success: true, imageUrl };
-                }
-            }
+        const taskId = submitResponse.data?.output?.task_id;
+        if (!taskId) {
+            return { success: false, error: 'No task ID returned' };
         }
 
-        console.error('Unexpected response:', JSON.stringify(response.data));
-        return { success: false, error: 'Format response tidak sesuai' };
+        return await pollTaskResult(taskId, { signal });
     } catch (error) {
-        const errMsg = error.response?.data?.message || error.response?.data?.error?.message || error.message;
-        console.error('❌ Qwen Image 2.0 Pro Error:', errMsg);
-        return { success: false, error: errMsg };
+        if (isAborted(error)) return { success: false, error: 'Request dibatalkan' };
+        // Fallback to text-to-video
+        console.warn('I2V failed, falling back to T2V:', extractErrorMessage(error));
+        return generateVideo(prompt, { signal });
     }
 }
 
-export default {
-    generateImage,
-    editImageWithAvatar,
-    generateVideo,
-    generateVideoFromImage,
-    generateR2V,
-    generatePosterImage,
-};
+/**
+ * Generate Reference-to-Video using Wan 2.6 R2V — async with polling.
+ *
+ * @param {string}   prompt         - Video description.
+ * @param {string[]} referenceUrls  - Array of reference image/video URLs.
+ * @param {object}   [options]
+ * @param {string}   [options.size='1280*720']
+ * @param {number}   [options.duration=5]
+ * @param {string}   [options.shotType='single']
+ * @param {boolean}  [options.audio=true]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{success: boolean, videoUrl?: string, error?: string}>}
+ */
+export async function generateR2V(prompt, referenceUrls = [], options = {}) {
+    const { signal, ...params } = options;
+
+    try {
+        const submitResponse = await wanAsyncClient.post(
+            '/services/aigc/video-generation/video-synthesis',
+            {
+                model: 'wan2.6-r2v-flash',
+                input: {
+                    prompt,
+                    reference_urls: referenceUrls,
+                },
+                parameters: {
+                    size: params.size || '1280*720',
+                    duration: params.duration || 5,
+                    shot_type: params.shotType || 'single',
+                    audio: params.audio !== false,
+                    watermark: params.watermark || false,
+                },
+            },
+            { signal },
+        );
+
+        const taskId = submitResponse.data?.output?.task_id;
+        if (!taskId) {
+            return { success: false, error: 'No task ID returned' };
+        }
+
+        return await pollTaskResult(taskId, { signal });
+    } catch (error) {
+        if (isAborted(error)) return { success: false, error: 'Request dibatalkan' };
+        return { success: false, error: extractErrorMessage(error) };
+    }
+}

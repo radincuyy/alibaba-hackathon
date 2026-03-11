@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-    ArrowLeft, Sparkles, FileText, Image, UserCircle, Video,
+    ArrowLeft, FileText, Image, UserCircle, Video,
     Film, ShoppingBag, ArrowUpRight
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -74,19 +74,21 @@ export default function GeneratorPage() {
         <div className="min-h-screen bg-cream-100">
             <Navbar />
 
-            <main className="pt-28 pb-20">
+            <main className="pt-28 pb-20" aria-label="AI Tools Generator">
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     {/* Back link */}
-                    <Link
-                        to="/"
-                        className="inline-flex items-center gap-2 text-sm text-cream-500 hover:text-cream-900 transition-colors mb-8"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Kembali ke Home
-                    </Link>
+                    <nav aria-label="Breadcrumb">
+                        <Link
+                            to="/"
+                            className="inline-flex items-center gap-2 text-sm text-cream-500 hover:text-cream-900 transition-colors mb-8"
+                        >
+                            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                            Kembali ke Home
+                        </Link>
+                    </nav>
 
                     {/* Header */}
-                    <div className="mb-14 max-w-2xl">
+                    <header className="mb-14 max-w-2xl">
                         <div className="flex items-center gap-2 mb-4">
                             <span className="section-label text-accent">Powered by Qwen AI & Wan 2.6</span>
                         </div>
@@ -97,28 +99,30 @@ export default function GeneratorPage() {
                         <p className="section-subtitle">
                             Pilih tools AI yang kamu butuhkan untuk membuat konten marketing profesional.
                         </p>
-                    </div>
+                    </header>
 
                     {/* Tool Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5" role="list">
                         {tools.map((tool, i) => (
                             <Link
                                 key={tool.id}
                                 to={tool.link}
                                 className="card-hover p-6 md:p-8 group opacity-0 animate-fade-up"
                                 style={{ animationDelay: `${i * 0.08}s` }}
+                                role="listitem"
+                                aria-label={`${tool.title} — ${tool.description}`}
                             >
                                 <div className="flex items-start justify-between mb-5">
                                     <div className="flex items-center gap-4">
                                         <div className={`w-12 h-12 rounded-2xl ${tool.color} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                                            <tool.icon className="w-5 h-5 text-white" />
+                                            <tool.icon className="w-5 h-5 text-white" aria-hidden="true" />
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-cream-900 group-hover:text-accent transition-colors">{tool.title}</h3>
                                             <p className="text-xs text-cream-500">{tool.subtitle}</p>
                                         </div>
                                     </div>
-                                    <ArrowUpRight className="w-5 h-5 text-cream-400 group-hover:text-accent group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
+                                    <ArrowUpRight className="w-5 h-5 text-cream-400 group-hover:text-accent group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" aria-hidden="true" />
                                 </div>
 
                                 <p className="text-sm text-cream-600 leading-relaxed mb-5">

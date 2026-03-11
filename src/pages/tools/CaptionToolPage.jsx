@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { FileText, Package } from 'lucide-react';
 import ToolLayout from '../../components/ToolLayout';
 import ProductForm from '../../components/ProductForm';
@@ -9,20 +9,40 @@ export default function CaptionToolPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState(null);
     const [showResults, setShowResults] = useState(false);
+    const abortControllerRef = useRef(null);
 
-    const handleSubmit = async (formData) => {
+    // Cleanup on unmount — abort any in-flight requests
+    useEffect(() => {
+        return () => {
+            abortControllerRef.current?.abort();
+        };
+    }, []);
+
+    const handleSubmit = useCallback(async (formData) => {
+        // Abort previous request if still running
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setIsLoading(true);
         setShowResults(true);
         setResults(null);
+
         try {
-            const allResults = await generateAllContent(formData);
-            setResults(allResults);
+            const allResults = await generateAllContent(formData, { signal: controller.signal });
+            if (!controller.signal.aborted) {
+                setResults(allResults);
+            }
         } catch (e) {
-            console.error('Caption generation error:', e);
+            if (!controller.signal.aborted) {
+                console.error('Caption generation error:', e);
+            }
         } finally {
-            setIsLoading(false);
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+            }
         }
-    };
+    }, []);
 
     return (
         <ToolLayout
@@ -35,16 +55,16 @@ export default function CaptionToolPage() {
                 <ResultTabs
                     results={results}
                     isLoading={isLoading}
-                    isImageLoading={false}
-                    isVideoLoading={false}
                     isAvatarLoading={false}
-                    onRegenerate={() => { }}
+                    onRegenerate={null}
                     hasAvatar={false}
                 />
             }
         >
             <div className="card p-6 md:p-8 sticky top-24">
-                <h2 className="text-lg font-semibold text-cream-900 flex items-center gap-2 mb-6"><Package className="w-5 h-5 text-brand-400" /> Detail Produk</h2>
+                <h2 className="text-lg font-semibold text-cream-900 flex items-center gap-2 mb-6">
+                    <Package className="w-5 h-5 text-brand-400" aria-hidden="true" /> Detail Produk
+                </h2>
                 <ProductForm
                     onSubmit={handleSubmit}
                     isLoading={isLoading}
@@ -54,4 +74,3 @@ export default function CaptionToolPage() {
         </ToolLayout>
     );
 }
-
